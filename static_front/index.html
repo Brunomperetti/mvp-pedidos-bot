@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Demo - Pedidos Bot</title>
+
     <style>
         body {
             margin: 0;
@@ -86,8 +87,16 @@
         button:hover {
             background: #0d6b5a;
         }
+
+        /* Links del PDF */
+        a {
+            color: blue;
+            text-decoration: underline;
+            word-break: break-all;
+        }
     </style>
 </head>
+
 <body>
 
 <div class="chat-container">
@@ -110,13 +119,9 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // Mostrar mensaje del usuario
         addMessage(text, "user");
-
-        // Limpiar input
         input.value = "";
 
-        // Llamar API (URL relativa para Render y local)
         const response = await fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -129,10 +134,14 @@
 
         const data = await response.json();
 
-        // Mostrar respuesta del bot
-        addMessage(data.reply, "bot");
+        let reply = data.reply;
 
-        // Actualizar stage
+        // 🔥 Convertir automáticamente /pdf/archivo.pdf en link clickable
+        reply = reply.replace(/(\/pdf\/[^\s]+)/g, url => {
+            return `<a href="${url}" target="_blank">${url}</a>`;
+        });
+
+        addMessage(reply, "bot");
         stage = data.next_stage;
     }
 
@@ -140,7 +149,10 @@
         const msgBox = document.getElementById("messages");
         const div = document.createElement("div");
         div.classList.add("msg", type);
-        div.textContent = text;
+
+        // 🔥 Permitir HTML (para los links PDF)
+        div.innerHTML = text;
+
         msgBox.appendChild(div);
         msgBox.scrollTop = msgBox.scrollHeight;
     }
