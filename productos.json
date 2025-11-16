@@ -1,0 +1,26 @@
+[
+    {
+        "codigo": "BUJ001",
+        "nombre": "Bujía Ford Ka",
+        "precio": 3200,
+        "stock_color": "verde"
+    },
+    {
+        "codigo": "FILT123",
+        "nombre": "Filtro de Aceite Chevrolet Corsa",
+        "precio": 4500,
+        "stock_color": "amarillo"
+    },
+    {
+        "codigo": "PAST789",
+        "nombre": "Pastillas de Freno Peugeot 208",
+        "precio": 15200,
+        "stock_color": "rojo"
+    },
+    {
+        "codigo": "ACE006",
+        "nombre": "Aceite para ranger",
+        "precio": 13500,
+        "stock_color": "amarillo"
+    }
+]

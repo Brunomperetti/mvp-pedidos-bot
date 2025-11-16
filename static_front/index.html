@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Demo - Pedidos Bot</title>
+    <style>
+        body {
+            margin: 0;
+            background: #e5ddd5;
+            font-family: Arial, sans-serif;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            height: 95vh;
+            margin: auto;
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #075e54;
+            color: white;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #e5ddd5;
+        }
+
+        .msg {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            white-space: pre-wrap;
+        }
+
+        .msg.user {
+            align-self: flex-end;
+            background: #dcf8c6;
+        }
+
+        .msg.bot {
+            align-self: flex-start;
+            background: white;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background: #fff;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #128c7e;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0d6b5a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">Asistente de Pedidos</div>
+
+    <div id="messages" class="messages"></div>
+
+    <div class="input-area">
+        <input id="userInput" type="text" placeholder="Escribí tu mensaje..."/>
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+</div>
+
+<script>
+    let session_id = "demo_" + Math.floor(Math.random() * 100000);
+    let stage = "inicio";
+
+    async function sendMessage() {
+        const input = document.getElementById("userInput");
+        const text = input.value.trim();
+        if (!text) return;
+
+        // Mostrar mensaje del usuario
+        addMessage(text, "user");
+
+        // Limpiar input
+        input.value = "";
+
+        // Llamar API
+        const response = await fetch("http://127.0.0.1:8000/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session_id: session_id,
+                text: text,
+                stage: stage
+            })
+        });
+
+        const data = await response.json();
+
+        // Mostrar respuesta del bot
+        addMessage(data.reply, "bot");
+
+        // Actualizar stage
+        stage = data.next_stage;
+    }
+
+    function addMessage(text, type) {
+        const msgBox = document.getElementById("messages");
+        const div = document.createElement("div");
+        div.classList.add("msg", type);
+        div.textContent = text;
+        msgBox.appendChild(div);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
