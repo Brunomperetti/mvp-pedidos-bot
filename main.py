@@ -5,12 +5,10 @@ from typing import Literal, Optional
 import json
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import cm
 import uuid
 import os
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
 
 # ─────────────────────────────────────────────
 # CONFIGURACIÓN FASTAPI
@@ -28,11 +26,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# Servir front y admin como archivos estáticos
-from fastapi.staticfiles import StaticFiles
 
+# Servir front y admin
 app.mount("/front", StaticFiles(directory="static_front", html=True), name="front")
 app.mount("/admin", StaticFiles(directory="admin", html=True), name="admin")
+
+# ─────────────────────────────────────────────
+# CREAR CARPETA PDF (FIX PARA RENDER)
+# ─────────────────────────────────────────────
+if not os.path.exists("pedidos_pdf"):
+    os.makedirs("pedidos_pdf")
 
 # ─────────────────────────────────────────────
 # CARGAR PRODUCTOS
@@ -40,9 +43,8 @@ app.mount("/admin", StaticFiles(directory="admin", html=True), name="admin")
 with open("productos.json", "r", encoding="utf-8") as f:
     PRODUCTOS = json.load(f)
 
-# SESIONES CON CARRITO
+# Sesiones con carrito
 SESSIONS = {}  # { session_id: { "carrito": [], "producto": {...} } }
-
 
 def buscar_producto(query: str):
     query = query.lower()
@@ -51,14 +53,10 @@ def buscar_producto(query: str):
             return p
     return None
 
-
 # ─────────────────────────────────────────────
-# PDF MULTI-ITEM (PASO 6 COMPLETO)
+# GENERAR PDF MULTI-ITEM
 # ─────────────────────────────────────────────
 def generar_pdf_carrito(carrito, session_id):
-
-    if not os.path.exists("pedidos_pdf"):
-        os.makedirs("pedidos_pdf")
 
     pedido_id = str(uuid.uuid4())[:8]
     filename = f"pedido_{pedido_id}.pdf"
@@ -88,7 +86,6 @@ def generar_pdf_carrito(carrito, session_id):
     y -= 20
 
     total_general = 0
-
     c.setFont("Helvetica", 11)
 
     for item in carrito:
@@ -104,14 +101,13 @@ def generar_pdf_carrito(carrito, session_id):
         total_general += item["total"]
         y -= 20
 
-    # Total general
+    # Total final
     y -= 20
     c.setFont("Helvetica-Bold", 14)
     c.drawString(50, y, f"TOTAL GENERAL: ${total_general}")
 
     c.save()
     return filename
-
 
 # ─────────────────────────────────────────────
 # MODELO DE MENSAJE
@@ -130,12 +126,11 @@ class ChatMessage(BaseModel):
 
 
 # ─────────────────────────────────────────────
-# PANEL ADMIN (crear / editar productos)
+# PANEL ADMIN
 # ─────────────────────────────────────────────
 @app.get("/productos")
 def obtener_productos():
     return PRODUCTOS
-
 
 @app.post("/crear_producto")
 def crear_producto(data: dict):
@@ -157,7 +152,6 @@ def crear_producto(data: dict):
 
     return {"status": "ok"}
 
-
 @app.post("/actualizar_producto")
 def actualizar_producto(data: dict):
     codigo = data["codigo"]
@@ -177,7 +171,7 @@ def actualizar_producto(data: dict):
 
 
 # ─────────────────────────────────────────────
-# CHATBOT (CARRITO COMPLETO)
+# CHATBOT COMPLETO (CARRITO + PDF)
 # ─────────────────────────────────────────────
 @app.post("/chat")
 def chat(message: ChatMessage):
@@ -215,7 +209,7 @@ def chat(message: ChatMessage):
             )
             next_stage = "esperando_cantidad"
 
-    # AGREGAR ITEM AL CARRITO
+    # CANTIDAD → agregar al carrito
     elif stage == "esperando_cantidad":
 
         producto = SESSIONS[message.session_id]["producto"]
@@ -238,19 +232,19 @@ def chat(message: ChatMessage):
     # PREGUNTAR SI AGREGA MÁS
     elif stage == "preguntar_otro":
 
-        if user_text in ["si", "sí", "s", "dale", "agregar"]:
+        if user_text in ["si", "sí", "s", "dale"]:
             respuesta = "Perfecto 🙌\nDecime el código o nombre del próximo producto."
             next_stage = "esperando_producto"
 
-        elif user_text in ["no", "n", "listo", "cerrar"]:
-            respuesta = "Perfecto 👌\nGenerando el resumen del carrito..."
+        elif user_text in ["no", "n", "listo"]:
+            respuesta = "Perfecto 👌\nGenerando el resumen..."
             next_stage = "finalizar"
 
         else:
-            respuesta = "No entendí 😅 ¿Agregamos otro? (si/no)"
+            respuesta = "No entendí 😅 ¿Agregamos otro? (si / no)"
             next_stage = "preguntar_otro"
 
-    # MOSTRAR RESUMEN (PASO 5)
+    # MOSTRAR RESUMEN
     elif stage == "finalizar":
 
         carrito = SESSIONS[message.session_id]["carrito"]
@@ -258,8 +252,9 @@ def chat(message: ChatMessage):
         if not carrito:
             respuesta = "Tu carrito está vacío 😕. Empecemos de nuevo."
             next_stage = "inicio"
+
         else:
-            respuesta = "🧾 *Resumen de tu pedido:*\n\n"
+            respuesta = "🧾 *Resumen del pedido:*\n\n"
             total_general = 0
 
             for item in carrito:
@@ -269,30 +264,32 @@ def chat(message: ChatMessage):
                 )
                 total_general += item["total"]
 
-            respuesta += f"\n💰 *Total general: ${total_general}*\n\n"
+            respuesta += f"\n💰 *Total: ${total_general}*\n\n"
             respuesta += "¿Querés que genere el PDF? (si / no)"
 
             next_stage = "confirmacion"
 
-    # CONFIRMAR PDF (SE GENERA ACÁ)
+    # GENERAR PDF
     elif stage == "confirmacion":
 
         if user_text in ["si", "sí", "s", "dale"]:
-
             carrito = SESSIONS[message.session_id]["carrito"]
 
             pdf_filename = generar_pdf_carrito(carrito, message.session_id)
-            pdf_url = f"http://127.0.0.1:8000/pdf/{pdf_filename}"
+
+            # FIX PARA RENDER → URL RELATIVA
+            pdf_url = f"/pdf/{pdf_filename}"
 
             respuesta = (
                 "📄 Tu PDF está listo!\n"
                 f"{pdf_url}\n\n"
-                "Gracias por usar el asistente automático 🙌"
+                "Gracias por usar el asistente 🙌"
             )
+
             next_stage = "inicio"
 
         else:
-            respuesta = "Perfecto 👍 Pedido cancelado. ¿Querés empezar de nuevo?"
+            respuesta = "Perfecto 👍 Pedido cancelado."
             next_stage = "inicio"
 
     else:
@@ -303,9 +300,9 @@ def chat(message: ChatMessage):
 
 
 # ─────────────────────────────────────────────
-# SERVIR PDF
+# SERVIR PDF (CORRECTO PARA RENDER)
 # ─────────────────────────────────────────────
 @app.get("/pdf/{filename}")
 def get_pdf(filename: str):
-    return FileResponse(os.path.join("pedidos_pdf", filename))
-
+    filepath = os.path.join("pedidos_pdf", filename)
+    return FileResponse(filepath, media_type="application/pdf", filename=filename)
