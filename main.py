@@ -19,6 +19,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 👉 FIX PARA RENDER: endpoint raíz
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "API Pedidos Bot funcionando"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,11 +31,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 🔥 RUTA HOME (FIX PARA RENDER)
-@app.get("/")
-def home():
-    return {"status": "ok", "message": "API funcionando 🚀"}
 
 # Servir front y admin
 app.mount("/front", StaticFiles(directory="static_front", html=True), name="front")
@@ -115,6 +115,7 @@ def generar_pdf_carrito(carrito, session_id):
     c.save()
     return filename
 
+
 # ─────────────────────────────────────────────
 # MODELO DE MENSAJE
 # ─────────────────────────────────────────────
@@ -130,12 +131,14 @@ class ChatMessage(BaseModel):
         "confirmacion"
     ]] = "inicio"
 
+
 # ─────────────────────────────────────────────
 # PANEL ADMIN
 # ─────────────────────────────────────────────
 @app.get("/productos")
 def obtener_productos():
     return PRODUCTOS
+
 
 @app.post("/crear_producto")
 def crear_producto(data: dict):
@@ -157,6 +160,7 @@ def crear_producto(data: dict):
 
     return {"status": "ok"}
 
+
 @app.post("/actualizar_producto")
 def actualizar_producto(data: dict):
     codigo = data["codigo"]
@@ -173,6 +177,7 @@ def actualizar_producto(data: dict):
             return {"status": "ok"}
 
     return {"status": "error", "message": "No encontrado"}
+
 
 # ─────────────────────────────────────────────
 # CHATBOT COMPLETO
@@ -213,7 +218,7 @@ def chat(message: ChatMessage):
             )
             next_stage = "esperando_cantidad"
 
-    # CANTIDAD → agregar al carrito
+    # AGREGAR AL CARRITO
     elif stage == "esperando_cantidad":
 
         producto = SESSIONS[message.session_id]["producto"]
@@ -281,7 +286,7 @@ def chat(message: ChatMessage):
 
             pdf_filename = generar_pdf_carrito(carrito, message.session_id)
 
-            # FIX → URL relativa (Render + local)
+            # FIX Render → URL relativa
             pdf_url = f"/pdf/{pdf_filename}"
 
             respuesta = (
@@ -302,11 +307,11 @@ def chat(message: ChatMessage):
 
     return {"reply": respuesta, "next_stage": next_stage}
 
+
 # ─────────────────────────────────────────────
-# SERVIR PDF (perfecto para Render)
+# SERVIR PDF (Render OK)
 # ─────────────────────────────────────────────
 @app.get("/pdf/{filename}")
 def get_pdf(filename: str):
     filepath = os.path.join("pedidos_pdf", filename)
     return FileResponse(filepath, media_type="application/pdf", filename=filename)
-
