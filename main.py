@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal, Optional
@@ -124,7 +124,6 @@ class ChatMessage(BaseModel):
         "confirmacion"
     ]] = "inicio"
 
-
 # ─────────────────────────────────────────────
 # PANEL ADMIN
 # ─────────────────────────────────────────────
@@ -169,9 +168,8 @@ def actualizar_producto(data: dict):
 
     return {"status": "error", "message": "No encontrado"}
 
-
 # ─────────────────────────────────────────────
-# CHATBOT COMPLETO (CARRITO + PDF)
+# CHATBOT COMPLETO
 # ─────────────────────────────────────────────
 @app.post("/chat")
 def chat(message: ChatMessage):
@@ -229,7 +227,7 @@ def chat(message: ChatMessage):
         )
         next_stage = "preguntar_otro"
 
-    # PREGUNTAR SI AGREGA MÁS
+    # ¿Agregar otro?
     elif stage == "preguntar_otro":
 
         if user_text in ["si", "sí", "s", "dale"]:
@@ -277,7 +275,7 @@ def chat(message: ChatMessage):
 
             pdf_filename = generar_pdf_carrito(carrito, message.session_id)
 
-            # FIX PARA RENDER → URL RELATIVA
+            # FIX → URL relativa (Render + local)
             pdf_url = f"/pdf/{pdf_filename}"
 
             respuesta = (
@@ -298,11 +296,11 @@ def chat(message: ChatMessage):
 
     return {"reply": respuesta, "next_stage": next_stage}
 
-
 # ─────────────────────────────────────────────
-# SERVIR PDF (CORRECTO PARA RENDER)
+# SERVIR PDF (perfecto para Render)
 # ─────────────────────────────────────────────
 @app.get("/pdf/{filename}")
 def get_pdf(filename: str):
     filepath = os.path.join("pedidos_pdf", filename)
     return FileResponse(filepath, media_type="application/pdf", filename=filename)
+
