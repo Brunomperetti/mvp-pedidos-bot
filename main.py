@@ -1,4 +1,4 @@
-from fastapi import FastAPI 
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal, Optional
@@ -27,6 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 🔥 RUTA HOME (FIX PARA RENDER)
+@app.get("/")
+def home():
+    return {"status": "ok", "message": "API funcionando 🚀"}
+
 # Servir front y admin
 app.mount("/front", StaticFiles(directory="static_front", html=True), name="front")
 app.mount("/admin", StaticFiles(directory="admin", html=True), name="admin")
@@ -45,6 +50,7 @@ with open("productos.json", "r", encoding="utf-8") as f:
 
 # Sesiones con carrito
 SESSIONS = {}  # { session_id: { "carrito": [], "producto": {...} } }
+
 
 def buscar_producto(query: str):
     query = query.lower()
